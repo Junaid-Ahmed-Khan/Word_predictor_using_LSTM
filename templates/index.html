@@ -1,0 +1,252 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>LSTM AI | Next Word Predictor</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="page-wrapper">
+
+        <header class="navbar">
+            <a class="brand" href="/">
+                <span class="brand-icon">N</span>
+                <span>Neuro<span class="brand-accent">Text</span></span>
+            </a>
+
+            <span class="model-status">
+                <span class="status-dot"></span>
+                LSTM Model Active
+            </span>
+        </header>
+
+        <main>
+            <section class="hero">
+                <div class="eyebrow">
+                    <span>✦</span> DEEP LEARNING PROJECT
+                </div>
+
+                <h1>Predict what comes <span>next.</span></h1>
+
+                <p class="hero-description">
+                    Type a phrase and let your LSTM neural network
+                    predict the next words based on learned language patterns.
+                </p>
+            </section>
+
+            <section class="workspace">
+
+                <div class="input-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <span class="step-label">STEP 01</span>
+                            <h2>Enter your text</h2>
+                        </div>
+                        <span class="heading-icon">✎</span>
+                    </div>
+
+                    <form id="prediction-form"
+                          action="{{ url_for('home') }}"
+                          method="POST">
+
+                        <label for="prompt">YOUR INPUT PHRASE</label>
+
+                        <textarea
+                            id="prompt"
+                            name="prompt"
+                            rows="4"
+                            maxlength="2000"
+                            placeholder="Start typing something..."
+                            required>{{ prompt }}</textarea>
+
+                        <div class="input-footer">
+                            <span id="char-count">0 characters</span>
+                            <button type="button"
+                                    class="text-button"
+                                    id="clear-button">
+                                Clear text
+                            </button>
+                        </div>
+
+                        <div class="examples">
+                            <span class="examples-label">TRY AN EXAMPLE</span>
+
+                            <div class="example-list">
+                                <button type="button"
+                                        class="example-chip"
+                                        data-text="deep learning is">
+                                    Deep learning is
+                                </button>
+
+                                <button type="button"
+                                        class="example-chip"
+                                        data-text="machine learning can">
+                                    Machine learning can
+                                </button>
+
+                                <button type="button"
+                                        class="example-chip"
+                                        data-text="artificial intelligence">
+                                    Artificial intelligence
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="settings-row">
+                            <label for="top_k">Number of predictions</label>
+
+                            <select id="top_k" name="top_k">
+                                {% for n in [3, 5, 10] %}
+                                <option value="{{ n }}"
+                                    {% if top_k == n %}selected{% endif %}>
+                                    {{ n }} words
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="submit" class="predict-button"
+                                id="predict-button">
+                            <span>✦</span>
+                            <span id="button-label">Predict next words</span>
+                            <span class="button-arrow">→</span>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="results-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <span class="step-label">STEP 02</span>
+                            <h2>Predictions</h2>
+                        </div>
+                        <span class="results-count">
+                            {% if predictions %}
+                                {{ predictions|length }} results
+                            {% else %}
+                                Ready
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    {% if error %}
+                        <div class="message error-message">
+                            <span>!</span>
+                            <p>{{ error }}</p>
+                        </div>
+                    {% endif %}
+
+                    {% if predictions %}
+                        <p class="results-description">
+                            Your model's most likely next words.
+                        </p>
+
+                        <div class="prediction-list">
+                            {% for item in predictions %}
+                            <div class="prediction-card">
+                                <div class="prediction-top">
+                                    <div class="word-info">
+                                        <span class="rank">
+                                            {{ "%02d"|format(loop.index) }}
+                                        </span>
+                                        <span class="predicted-word">
+                                            {{ item.word }}
+                                        </span>
+                                    </div>
+
+                                    <span class="confidence">
+                                        {{ "%.2f"|format(item.score * 100) }}%
+                                    </span>
+                                </div>
+
+                                <div class="progress-track">
+                                    <div class="progress-fill"
+                                         style="width: {{ [100, [0, item.score * 100]|max]|min }}%">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+
+                    {% elif not error %}
+                        <div class="empty-state">
+                            <div class="empty-illustration">
+                                <span>✧</span>
+                                <div class="orbit orbit-one"></div>
+                                <div class="orbit orbit-two"></div>
+                            </div>
+
+                            <h3>Your predictions will appear here</h3>
+
+                            <p>
+                                Enter a phrase on the left and click
+                                <strong>Predict next words</strong>
+                                to see your model's results.
+                            </p>
+
+                            <div class="empty-tags">
+                                <span>Next-word prediction</span>
+                                <span>LSTM neural network</span>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+            </section>
+
+        </main>
+
+        <footer>
+            <span>NeuroText</span>
+            <span>Built with Python, TensorFlow & Flask</span>
+        </footer>
+
+    </div>
+
+    <script>
+        const promptInput = document.getElementById("prompt");
+        const charCount = document.getElementById("char-count");
+        const clearButton = document.getElementById("clear-button");
+        const form = document.getElementById("prediction-form");
+        const predictButton = document.getElementById("predict-button");
+        const buttonLabel = document.getElementById("button-label");
+
+        function updateCharacterCount() {
+            charCount.textContent =
+                `${promptInput.value.length} characters`;
+        }
+
+        promptInput.addEventListener("input", updateCharacterCount);
+
+        document.querySelectorAll(".example-chip").forEach(button => {
+            button.addEventListener("click", () => {
+                promptInput.value = button.dataset.text;
+                updateCharacterCount();
+                promptInput.focus();
+            });
+        });
+
+        clearButton.addEventListener("click", () => {
+            promptInput.value = "";
+            updateCharacterCount();
+            promptInput.focus();
+        });
+
+        form.addEventListener("submit", () => {
+            if (promptInput.value.trim()) {
+                predictButton.disabled = true;
+                buttonLabel.textContent = "Predicting...";
+            }
+        });
+
+        updateCharacterCount();
+    </script>
+</body>
+</html>
